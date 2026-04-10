@@ -30,6 +30,7 @@ def test_compute_trend_returns_stable_when_delta_small():
 
 def test_compute_trend_returns_stable_when_insufficient_data():
     assert _compute_trend([0.90, 0.80]) == "STABLE"
+    assert _compute_trend([0.90] * 9) == "STABLE"  # exactly < 10
 
 
 def test_find_drivers_returns_empty_when_not_degrading():
@@ -51,7 +52,7 @@ def test_analyze_session_health_returns_session_health():
     mock_row.metric_values = [MagicMock(value="0.05"), MagicMock(value="0.01")]
 
     mock_response = MagicMock()
-    mock_response.rows = [mock_row] * 10
+    mock_response.rows = [mock_row] * 15
 
     sa_info = {"type": "service_account"}
 
@@ -63,4 +64,4 @@ def test_analyze_session_health_returns_session_health():
 
     assert isinstance(result, SessionHealth)
     assert result.crash_free_rate_today == pytest.approx(0.95)
-    assert result.trend in ("IMPROVING", "STABLE", "DEGRADING")
+    assert result.trend == "STABLE"

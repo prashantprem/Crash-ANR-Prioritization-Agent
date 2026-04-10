@@ -58,10 +58,11 @@ def analyze_session_health(
 
 
 def _compute_trend(daily_rates: list[float]) -> str:
-    if len(daily_rates) < 7:
+    if len(daily_rates) < 10:
         return "STABLE"
     recent = sum(daily_rates[-3:]) / 3
-    older = sum(daily_rates[-10:-3]) / 7
+    older_slice = daily_rates[-10:-3]
+    older = sum(older_slice) / len(older_slice)
     delta = recent - older
     if delta > 0.005:
         return "IMPROVING"

@@ -48,14 +48,27 @@ def _fetch_counts_since(
 ) -> dict[str, int]:
     url = f"{CRASHLYTICS_BASE}/projects/{project_id}/apps/{app_id}/issues"
     headers = {"Authorization": f"Bearer {token}"}
-    params = {
-        "filter": f'appVersion="{version}" AND lastSeenTime>"{since}"',
-        "pageSize": 100,
-    }
-    resp = requests.get(url, headers=headers, params=params)
-    resp.raise_for_status()
-    data = resp.json()
-    return {
-        item["name"].split("/")[-1]: int(item.get("eventCount", 0))
-        for item in data.get("issues", [])
-    }
+    counts: dict[str, int] = {}
+    page_token = None
+
+    while True:
+        params: dict = {
+            "filter": f'appVersion="{version}" AND lastSeenTime>"{since}"',
+            "pageSize": 100,
+        }
+        if page_token:
+            params["pageToken"] = page_token
+
+        resp = requests.get(url, headers=headers, params=params)
+        resp.raise_for_status()
+        data = resp.json()
+
+        for item in data.get("issues", []):
+            issue_id = item["name"].split("/")[-1]
+            counts[issue_id] = int(item.get("eventCount", 0))
+
+        page_token = data.get("nextPageToken")
+        if not page_token:
+            break
+
+    return counts

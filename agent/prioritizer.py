@@ -3,6 +3,8 @@ from .models import Issue
 
 def prioritize(issues: list[Issue]) -> list[Issue]:
     for issue in issues:
+        # Uses event_count as a proxy for crash_rate (POC simplification — true crash_rate
+        # requires total session count which is not fetched per-issue from Crashlytics).
         base = issue.user_count * max(issue.event_count, 1)
         fresh_mult = 1.5 if issue.is_fresh else 1.0
         spike_mult = 1.3 if issue.is_spike else 1.0

@@ -16,7 +16,8 @@ def suggest_fixes(issues: list[Issue], api_key: str) -> list[Issue]:
         try:
             response = model.generate_content(prompt)
             issue.fix_suggestion = response.text.strip()
-        except Exception:
+        except Exception as e:
+            print(f"[fix_suggester] Error for issue {issue.id}: {type(e).__name__}: {e}")
             issue.fix_suggestion = "Unable to generate suggestion."
 
     return issues
