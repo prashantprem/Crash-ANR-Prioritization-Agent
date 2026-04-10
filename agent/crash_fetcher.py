@@ -13,6 +13,7 @@ def fetch_issues(
     app_id_encoded = quote(app_id, safe="")
     url = f"{CRASHLYTICS_BASE}/projects/{project_id}/apps/{app_id_encoded}/issues"
     headers = {"Authorization": f"Bearer {token}"}
+    print(f"[crash_fetcher] GET {url}")
     issues = []
     page_token = None
 
@@ -26,7 +27,8 @@ def fetch_issues(
 
         resp = requests.get(url, headers=headers, params=params)
         if not resp.ok:
-            print(f"[crash_fetcher] HTTP {resp.status_code} — {resp.text}")
+            print(f"[crash_fetcher] HTTP {resp.status_code} for project={project_id} app={app_id}")
+            print(f"[crash_fetcher] Response: {resp.text[:500]}")
         resp.raise_for_status()
         data = resp.json()
 
