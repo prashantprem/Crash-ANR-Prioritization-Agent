@@ -22,6 +22,8 @@ def fetch_issues(
             params["pageToken"] = page_token
 
         resp = requests.get(url, headers=headers, params=params)
+        if not resp.ok:
+            print(f"[crash_fetcher] HTTP {resp.status_code} — {resp.text}")
         resp.raise_for_status()
         data = resp.json()
 
