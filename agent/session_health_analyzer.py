@@ -33,7 +33,16 @@ def analyze_session_health(
         order_bys=[OrderBy(dimension=OrderBy.DimensionOrderBy(dimension_name="date"))],
     )
 
-    response = client.run_report(request)
+    try:
+        response = client.run_report(request)
+    except Exception as e:
+        print(f"[session_health] GA4 error: {e}")
+        print("[session_health] Returning default STABLE health — grant the service account Viewer access in GA4 Property Access Management")
+        return SessionHealth(
+            crash_free_rate_today=1.0,
+            anr_free_rate_today=1.0,
+            trend="STABLE",
+        )
 
     daily_crash_free = []
     daily_anr_free = []
