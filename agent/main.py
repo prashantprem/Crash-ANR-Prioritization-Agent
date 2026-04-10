@@ -14,6 +14,7 @@ from .spike_detector import detect_spikes
 
 def run() -> None:
     sa_json = os.environ["FIREBASE_SERVICE_ACCOUNT"]
+    sa_info = json.loads(sa_json)  # validate JSON early — fail fast on bad credentials
     project_id = os.environ["FIREBASE_PROJECT_ID"]
     app_id = os.environ["FIREBASE_APP_ID"]
     ga4_property_id = os.environ["GA4_PROPERTY_ID"]
@@ -32,7 +33,6 @@ def run() -> None:
     issues = detect_fresh(current, previous)
     issues = detect_spikes(issues, token, project_id, app_id, current_version)
 
-    sa_info = json.loads(sa_json)
     health = analyze_session_health(sa_info, ga4_property_id, issues)
     print(f"Session health trend: {health.trend}")
 

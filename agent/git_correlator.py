@@ -75,9 +75,12 @@ def _get_pr_for_commit(headers: dict, repo: str, sha: str) -> Optional[LinkedPR]
         return None
     pr = resp.json()[0]
     merged_at = pr.get("merged_at") or ""
+    url = pr["html_url"]
+    if not url.startswith("https://"):
+        return None
     return LinkedPR(
         title=pr["title"],
         author=pr["user"]["login"],
         merge_date=merged_at[:10],
-        url=pr["html_url"],
+        url=url,
     )
