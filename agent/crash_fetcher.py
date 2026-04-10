@@ -1,3 +1,5 @@
+from urllib.parse import quote
+
 import requests
 
 from .models import Issue
@@ -8,7 +10,8 @@ CRASHLYTICS_BASE = "https://crashlytics.googleapis.com/v1alpha"
 def fetch_issues(
     token: str, project_id: str, app_id: str, version: str
 ) -> list[Issue]:
-    url = f"{CRASHLYTICS_BASE}/projects/{project_id}/apps/{app_id}/issues"
+    app_id_encoded = quote(app_id, safe="")
+    url = f"{CRASHLYTICS_BASE}/projects/{project_id}/apps/{app_id_encoded}/issues"
     headers = {"Authorization": f"Bearer {token}"}
     issues = []
     page_token = None
