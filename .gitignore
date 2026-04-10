@@ -1,0 +1,32 @@
+# Android
+*.iml
+.gradle
+/local.properties
+/.idea/caches
+/.idea/libraries
+/.idea/modules.xml
+/.idea/workspace.xml
+/.idea/navEditor.xml
+/.idea/assetWizardSettings.xml
+.DS_Store
+/build
+/captures
+.externalNativeBuild
+.cxx
+local.properties
+
+# Firebase — do not commit service account or google-services to public repo
+google-services.json
+firebase-service-account.json
+*-service-account.json
+
+# Python agent
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+*.egg-info/
+.env
+
+# Agent output
+/output/
