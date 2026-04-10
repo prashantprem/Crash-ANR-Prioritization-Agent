@@ -19,7 +19,7 @@ def run() -> None:
     app_id = os.environ["FIREBASE_APP_ID"]
     ga4_property_id = os.environ["GA4_PROPERTY_ID"]
     github_token = os.environ["GITHUB_TOKEN"]
-    github_repo = os.environ["GITHUB_REPO"]
+    github_repo = os.environ["TARGET_REPO"]
     gemini_key = os.environ["GEMINI_API_KEY"]
     current_version = os.environ.get("CURRENT_VERSION", "1.1")
     previous_version = os.environ.get("PREVIOUS_VERSION", "1.0")

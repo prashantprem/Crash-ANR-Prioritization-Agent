@@ -11,7 +11,7 @@ ENV = {
     "FIREBASE_APP_ID": "1:123:android:abc",
     "GA4_PROPERTY_ID": "987654",
     "GITHUB_TOKEN": "ghp_fake",
-    "GITHUB_REPO": "owner/demo-app",
+    "TARGET_REPO": "owner/demo-app",
     "GEMINI_API_KEY": "AIza-fake",
     "CURRENT_VERSION": "1.1",
     "PREVIOUS_VERSION": "1.0",

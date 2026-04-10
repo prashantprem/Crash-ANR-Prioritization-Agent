@@ -30,7 +30,7 @@ jobs:
           FIREBASE_APP_ID: ${{ vars.FIREBASE_APP_ID }}
           GA4_PROPERTY_ID: ${{ vars.GA4_PROPERTY_ID }}
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          GITHUB_REPO: ${{ vars.GITHUB_REPO }}
+          TARGET_REPO: ${{ vars.TARGET_REPO }}
           CURRENT_VERSION: "1.1"
           PREVIOUS_VERSION: "1.0"
 
