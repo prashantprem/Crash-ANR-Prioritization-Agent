@@ -8,7 +8,7 @@ SA_JSON = json.dumps({"type": "service_account", "project_id": "p"})
 ENV = {
     "FIREBASE_SERVICE_ACCOUNT": SA_JSON,
     "FIREBASE_PROJECT_ID": "my-project",
-    "FIREBASE_APP_ID": "1:123:android:abc",
+    "FIREBASE_APP_PACKAGE": "com.example.crashdemo",
     "GA4_PROPERTY_ID": "987654",
     "GITHUB_TOKEN": "ghp_fake",
     "TARGET_REPO": "owner/demo-app",
@@ -20,7 +20,7 @@ ENV = {
 
 def test_run_calls_all_pipeline_steps(tmp_path):
     with patch.dict("os.environ", ENV), \
-         patch("agent.main.get_access_token", return_value="tok"), \
+         patch("agent.main.get_bigquery_client", return_value=MagicMock()) as mock_bq, \
          patch("agent.main.fetch_issues", return_value=[]) as mock_fetch, \
          patch("agent.main.detect_fresh", return_value=[]) as mock_fresh, \
          patch("agent.main.detect_spikes", return_value=[]) as mock_spike, \
@@ -31,6 +31,7 @@ def test_run_calls_all_pipeline_steps(tmp_path):
          patch("agent.main.generate_report", return_value=str(tmp_path / "report.html")):
         run()
 
+    mock_bq.assert_called_once()
     assert mock_fetch.call_count == 2  # current + previous version
     mock_fresh.assert_called_once()
     mock_spike.assert_called_once()

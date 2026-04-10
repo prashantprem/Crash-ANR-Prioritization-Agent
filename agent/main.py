@@ -1,7 +1,7 @@
 import json
 import os
 
-from .auth import get_access_token
+from .auth import get_bigquery_client
 from .crash_fetcher import fetch_issues
 from .fix_suggester import suggest_fixes
 from .fresh_detector import detect_fresh
@@ -16,7 +16,7 @@ def run() -> None:
     sa_json = os.environ["FIREBASE_SERVICE_ACCOUNT"]
     sa_info = json.loads(sa_json)  # validate JSON early — fail fast on bad credentials
     project_id = os.environ["FIREBASE_PROJECT_ID"]
-    app_id = os.environ["FIREBASE_APP_ID"]
+    app_package = os.environ["FIREBASE_APP_PACKAGE"]
     ga4_property_id = os.environ["GA4_PROPERTY_ID"]
     github_token = os.environ["GITHUB_TOKEN"]
     github_repo = os.environ["TARGET_REPO"]
@@ -25,13 +25,13 @@ def run() -> None:
     previous_version = os.environ.get("PREVIOUS_VERSION", "1.0")
 
     print(f"Fetching issues for v{current_version} and v{previous_version}...")
-    token = get_access_token(sa_json)
-    current = fetch_issues(token, project_id, app_id, current_version)
-    previous = fetch_issues(token, project_id, app_id, previous_version)
+    bq_client = get_bigquery_client(sa_info, project_id)
+    current = fetch_issues(bq_client, project_id, app_package, current_version)
+    previous = fetch_issues(bq_client, project_id, app_package, previous_version)
 
     print(f"Found {len(current)} issues in v{current_version}, {len(previous)} in v{previous_version}")
     issues = detect_fresh(current, previous)
-    issues = detect_spikes(issues, token, project_id, app_id, current_version)
+    issues = detect_spikes(issues, bq_client, project_id, app_package, current_version)
 
     health = analyze_session_health(sa_info, ga4_property_id, issues)
     print(f"Session health trend: {health.trend}")

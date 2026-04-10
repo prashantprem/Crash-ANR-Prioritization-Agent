@@ -1,61 +1,70 @@
-from urllib.parse import quote
-
-import requests
+from google.api_core.exceptions import NotFound
 
 from .models import Issue
 
-CRASHLYTICS_BASE = "https://crashlytics.googleapis.com/v1alpha"
 
+def fetch_issues(bq_client, project_id: str, app_package: str, version: str) -> list[Issue]:
+    table_name = app_package.replace(".", "_") + "_ANDROID"
+    full_table = f"`{project_id}.firebase_crashlytics.{table_name}`"
 
-def fetch_issues(
-    token: str, project_id: str, app_id: str, version: str
-) -> list[Issue]:
-    app_id_encoded = quote(app_id, safe="")
-    url = f"{CRASHLYTICS_BASE}/projects/{project_id}/apps/{app_id_encoded}/issues"
-    headers = {"Authorization": f"Bearer {token}"}
-    print(f"[crash_fetcher] GET {url}")
+    query = f"""
+        SELECT
+          issue_id,
+          ANY_VALUE(error_type) AS error_type,
+          ANY_VALUE(COALESCE(exceptions[SAFE_OFFSET(0)].type, 'Unknown')) AS exception_type,
+          ANY_VALUE(COALESCE(blame_frame.file, '')) AS blame_file,
+          ANY_VALUE(blame_frame.line) AS blame_line,
+          COUNT(*) AS event_count,
+          COUNT(DISTINCT installation_uuid) AS user_count,
+          MAX(event_timestamp) AS last_seen
+        FROM {full_table}
+        WHERE application.display_version = @version
+        GROUP BY issue_id
+        ORDER BY user_count DESC
+        LIMIT 200
+    """
+
+    from google.cloud import bigquery
+
+    job_config = bigquery.QueryJobConfig(
+        query_parameters=[
+            bigquery.ScalarQueryParameter("version", "STRING", version)
+        ]
+    )
+
+    try:
+        results = bq_client.query(query, job_config=job_config).result()
+    except NotFound:
+        print(f"[crash_fetcher] BigQuery table not found: {table_name}. "
+              "Ensure Crashlytics BigQuery export is enabled and data has synced.")
+        return []
+
     issues = []
-    page_token = None
+    for row in results:
+        error_type = (row.error_type or "FATAL").upper()
+        issue_type = "ANR" if error_type == "ANR" else "CRASH"
+        exception_type = row.exception_type or "Unknown"
+        blame_file = row.blame_file or ""
+        blame_line = str(row.blame_line) if row.blame_line is not None else ""
 
-    while True:
-        params: dict = {
-            "filter": f'appVersion="{version}"',
-            "pageSize": 100,
-        }
-        if page_token:
-            params["pageToken"] = page_token
+        title = (
+            f"{exception_type} in {blame_file}:{blame_line}"
+            if blame_file else exception_type
+        )
+        stack_trace = (
+            f"at {exception_type}({blame_file}:{blame_line})"
+            if blame_file else ""
+        )
 
-        resp = requests.get(url, headers=headers, params=params)
-        if not resp.ok:
-            print(f"[crash_fetcher] HTTP {resp.status_code} for project={project_id} app={app_id}")
-            print(f"[crash_fetcher] Response: {resp.text[:500]}")
-        resp.raise_for_status()
-        data = resp.json()
-
-        for item in data.get("issues", []):
-            issues.append(_parse_issue(item))
-
-        page_token = data.get("nextPageToken")
-        if not page_token:
-            break
+        issues.append(Issue(
+            id=row.issue_id,
+            issue_type=issue_type,
+            title=title,
+            event_count=row.event_count,
+            user_count=row.user_count,
+            first_seen_version=version,
+            last_seen_time=str(row.last_seen) if row.last_seen else "",
+            stack_trace=stack_trace,
+        ))
 
     return issues
-
-
-def _parse_issue(item: dict) -> Issue:
-    # Field names verified against Crashlytics v1alpha API.
-    # If fields differ in the live API, adjust the key names here.
-    return Issue(
-        id=item["name"].split("/")[-1],
-        issue_type=item.get("type", "CRASH"),
-        title=item.get("title", "Unknown"),
-        event_count=int(item.get("eventCount", 0)),
-        user_count=int(item.get("userCount", 0)),
-        first_seen_version=item.get("appVersion", ""),
-        last_seen_time=item.get("lastSeenTime", ""),
-        stack_trace=(
-            item.get("representativeEvent", {})
-            .get("exceptionInfo", {})
-            .get("stackTrace", "")
-        ),
-    )

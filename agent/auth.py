@@ -16,3 +16,13 @@ def get_access_token(service_account_json: str) -> str:
     )
     creds.refresh(google.auth.transport.requests.Request())
     return creds.token
+
+
+def get_bigquery_client(sa_info: dict, project_id: str):
+    from google.cloud import bigquery
+
+    creds = service_account.Credentials.from_service_account_info(
+        sa_info,
+        scopes=["https://www.googleapis.com/auth/cloud-platform"],
+    )
+    return bigquery.Client(project=project_id, credentials=creds)

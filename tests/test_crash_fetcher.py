@@ -1,54 +1,45 @@
-from unittest.mock import patch, MagicMock
+from unittest.mock import MagicMock
+from google.api_core.exceptions import NotFound
 from agent.crash_fetcher import fetch_issues
 
-FAKE_RESPONSE = {
-    "issues": [
-        {
-            "name": "projects/proj/apps/app/issues/abc123",
-            "type": "CRASH",
-            "title": "NullPointerException in HomeViewModel.kt:55",
-            "eventCount": "42",
-            "userCount": "10",
-            "appVersion": "1.1",
-            "lastSeenTime": "2026-04-10T08:00:00Z",
-            "representativeEvent": {
-                "exceptionInfo": {
-                    "stackTrace": "at com.example.HomeViewModel.load(HomeViewModel.kt:55)"
-                }
-            },
-        },
-        {
-            "name": "projects/proj/apps/app/issues/def456",
-            "type": "ANR",
-            "title": "ANR in MainActivity",
-            "eventCount": "5",
-            "userCount": "3",
-            "appVersion": "1.1",
-            "lastSeenTime": "2026-04-10T07:00:00Z",
-            "representativeEvent": {"exceptionInfo": {"stackTrace": ""}},
-        },
-    ]
-}
+
+def _make_row(issue_id, error_type, exception_type, blame_file, blame_line,
+              event_count, user_count, last_seen="2026-04-10"):
+    row = MagicMock()
+    row.issue_id = issue_id
+    row.error_type = error_type
+    row.exception_type = exception_type
+    row.blame_file = blame_file
+    row.blame_line = blame_line
+    row.event_count = event_count
+    row.user_count = user_count
+    row.last_seen = last_seen
+    return row
+
+
+def _make_bq_client(rows):
+    client = MagicMock()
+    job = MagicMock()
+    job.result.return_value = rows
+    client.query.return_value = job
+    return client
 
 
 def test_fetch_issues_returns_issue_list():
-    mock_resp = MagicMock()
-    mock_resp.json.return_value = FAKE_RESPONSE
-    mock_resp.raise_for_status = MagicMock()
-
-    with patch("agent.crash_fetcher.requests.get", return_value=mock_resp):
-        issues = fetch_issues("fake-token", "proj", "app", "1.1")
-
+    rows = [
+        _make_row("abc123", "FATAL", "NullPointerException", "HomeViewModel.kt", 55, 42, 10),
+        _make_row("def456", "ANR", "ANR", "MainActivity.kt", 10, 5, 3),
+    ]
+    issues = fetch_issues(_make_bq_client(rows), "proj", "com.example.app", "1.1")
     assert len(issues) == 2
 
 
 def test_fetch_issues_parses_fields_correctly():
-    mock_resp = MagicMock()
-    mock_resp.json.return_value = FAKE_RESPONSE
-    mock_resp.raise_for_status = MagicMock()
-
-    with patch("agent.crash_fetcher.requests.get", return_value=mock_resp):
-        issues = fetch_issues("fake-token", "proj", "app", "1.1")
+    rows = [
+        _make_row("abc123", "FATAL", "NullPointerException", "HomeViewModel.kt", 55, 42, 10),
+        _make_row("def456", "ANR", "ANR", "MainActivity.kt", 10, 5, 3),
+    ]
+    issues = fetch_issues(_make_bq_client(rows), "proj", "com.example.app", "1.1")
 
     crash = issues[0]
     assert crash.id == "abc123"
@@ -61,19 +52,10 @@ def test_fetch_issues_parses_fields_correctly():
     assert anr.issue_type == "ANR"
 
 
-def test_fetch_issues_handles_pagination():
-    page1 = {"issues": [FAKE_RESPONSE["issues"][0]], "nextPageToken": "tok"}
-    page2 = {"issues": [FAKE_RESPONSE["issues"][1]]}
-
-    mock_resp1 = MagicMock()
-    mock_resp1.json.return_value = page1
-    mock_resp1.raise_for_status = MagicMock()
-
-    mock_resp2 = MagicMock()
-    mock_resp2.json.return_value = page2
-    mock_resp2.raise_for_status = MagicMock()
-
-    with patch("agent.crash_fetcher.requests.get", side_effect=[mock_resp1, mock_resp2]):
-        issues = fetch_issues("fake-token", "proj", "app", "1.1")
-
-    assert len(issues) == 2
+def test_fetch_issues_returns_empty_on_not_found():
+    client = MagicMock()
+    job = MagicMock()
+    job.result.side_effect = NotFound("table not found")
+    client.query.return_value = job
+    issues = fetch_issues(client, "proj", "com.example.app", "1.1")
+    assert issues == []
