@@ -14,6 +14,7 @@ def make_issue():
         stack_trace="at com.example.crashdemo.PlayerManager.start(PlayerManager.kt:42)",
         title="IllegalStateException in PlayerManager.kt:42",
         first_seen_version="1.1",
+        last_seen_time="2026-04-10T09:00:00Z",
     ):
         issue = Issue(
             id=id,
@@ -22,7 +23,7 @@ def make_issue():
             event_count=event_count,
             user_count=user_count,
             first_seen_version=first_seen_version,
-            last_seen_time="2026-04-10T09:00:00Z",
+            last_seen_time=last_seen_time,
             stack_trace=stack_trace,
         )
         issue.is_fresh = is_fresh
