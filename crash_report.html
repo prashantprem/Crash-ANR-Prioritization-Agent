@@ -1,0 +1,265 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Crash &amp; ANR Report — 2026-04-26</title>
+  <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&family=Roboto+Mono&display=swap" rel="stylesheet">
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: 'Roboto', sans-serif; background: #f5f5f5; color: #202124; font-size: 14px; }
+
+    /* Header */
+    .header { background: #fff; border-bottom: 1px solid #e0e0e0; padding: 0 24px; height: 64px; display: flex; align-items: center; gap: 12px; position: sticky; top: 0; z-index: 10; }
+    .header-logo { width: 28px; height: 28px; }
+    .header h1 { font-size: 20px; font-weight: 500; color: #202124; }
+    .version-chip { background: #e8f0fe; color: #1a73e8; padding: 4px 12px; border-radius: 12px; font-size: 12px; font-weight: 500; }
+    .report-date { margin-left: auto; color: #5f6368; font-size: 13px; }
+
+    /* Container */
+    .container { max-width: 1200px; margin: 24px auto; padding: 0 24px; display: flex; flex-direction: column; gap: 20px; }
+
+    /* Cards */
+    .card { background: #fff; border-radius: 8px; box-shadow: 0 1px 3px rgba(0,0,0,0.12), 0 1px 2px rgba(0,0,0,0.08); }
+
+    /* Stat cards */
+    .stats-row { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; }
+    .stat-card { padding: 20px 24px; }
+    .stat-label { font-size: 12px; color: #5f6368; margin-bottom: 8px; text-transform: uppercase; letter-spacing: 0.5px; }
+    .stat-value { font-size: 36px; font-weight: 400; }
+
+    /* Session health */
+    .health-card { padding: 20px 24px; }
+    .health-card h2 { font-size: 16px; font-weight: 500; margin-bottom: 4px; }
+    .health-subtitle { font-size: 13px; color: #5f6368; margin-bottom: 16px; }
+    .health-metrics { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; }
+    .health-metric-label { font-size: 12px; color: #5f6368; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 6px; }
+    .health-metric-value { font-size: 28px; font-weight: 400; display: flex; align-items: center; gap: 8px; margin-bottom: 8px; }
+    .trend-arrow { font-size: 22px; }
+    .trend-IMPROVING .trend-arrow { color: #1e8e3e; }
+    .trend-STABLE .trend-arrow { color: #5f6368; }
+    .trend-DEGRADING .trend-arrow { color: #d93025; }
+    .sparkline-wrap { height: 48px; }
+    .sparkline { width: 100%; height: 100%; display: block; }
+    .degrading-banner { margin-top: 16px; padding: 12px 16px; background: #fce8e6; border-radius: 4px; font-size: 13px; color: #d93025; }
+    .degrading-banner a { color: #d93025; font-weight: 500; }
+
+    /* Filter bar */
+    .filter-bar { display: flex; align-items: center; gap: 16px; padding: 12px 16px; border-bottom: 1px solid #e0e0e0; }
+    .filter-bar label { font-size: 12px; color: #5f6368; text-transform: uppercase; letter-spacing: 0.5px; }
+    .filter-bar select { border: 1px solid #dadce0; border-radius: 4px; padding: 6px 10px; font-size: 13px; color: #202124; background: #fff; cursor: pointer; outline: none; }
+    .filter-bar select:focus { border-color: #1a73e8; }
+
+    /* Issue table */
+    .table-card { overflow: hidden; }
+    .issue-table { width: 100%; border-collapse: collapse; }
+    .issue-table th { text-align: left; padding: 10px 16px; font-size: 11px; font-weight: 500; color: #5f6368; text-transform: uppercase; letter-spacing: 0.5px; border-bottom: 1px solid #e0e0e0; background: #fafafa; }
+    .issue-row { border-bottom: 1px solid #f1f3f4; cursor: pointer; transition: background 0.1s; }
+    .issue-row:hover { background: #f8f9fa; }
+    .issue-row td { padding: 12px 16px; vertical-align: middle; }
+    .issue-title { font-family: 'Roboto Mono', monospace; font-size: 12px; color: #202124; max-width: 420px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .issue-count { font-size: 14px; color: #202124; }
+    .expand-icon { color: #5f6368; font-size: 12px; user-select: none; width: 24px; text-align: center; }
+
+    /* Badges */
+    .badge { display: inline-block; padding: 2px 8px; border-radius: 12px; font-size: 11px; font-weight: 500; white-space: nowrap; }
+    .badge-P0 { background: #fce8e6; color: #d93025; }
+    .badge-P1 { background: #fef7e0; color: #f29900; }
+    .badge-P2 { background: #f1f3f4; color: #5f6368; }
+    .badge-FRESH { background: #e6f4ea; color: #1e8e3e; }
+    .badge-SPIKE { background: #f3e8fd; color: #a142f4; }
+    .badge-CRASH { background: #e8f0fe; color: #1a73e8; }
+    .badge-ANR { background: #fef0c7; color: #e37400; }
+    .badges-cell { display: flex; gap: 4px; flex-wrap: wrap; min-width: 160px; }
+
+    /* Detail row */
+    .detail-row { display: none; background: #fafafa; border-bottom: 1px solid #e0e0e0; }
+    .detail-row.open { display: table-row; }
+    .detail-row td { padding: 16px 24px; }
+    .detail-inner { display: flex; flex-direction: column; gap: 16px; }
+    .detail-section h4 { font-size: 11px; font-weight: 500; color: #5f6368; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 8px; }
+    .stack-trace { font-family: 'Roboto Mono', monospace; font-size: 12px; background: #202124; color: #e8eaed; padding: 16px; border-radius: 4px; overflow-x: auto; max-height: 220px; white-space: pre; line-height: 1.6; }
+    .fix-card { background: #fff; border-left: 3px solid #1a73e8; padding: 12px 16px; border-radius: 0 4px 4px 0; font-style: italic; color: #3c4043; line-height: 1.6; }
+    .pr-list { display: flex; flex-wrap: wrap; gap: 8px; }
+    .pr-chip { display: inline-block; background: #e8f0fe; color: #1a73e8; padding: 6px 14px; border-radius: 16px; font-size: 12px; text-decoration: none; transition: background 0.1s; }
+    .pr-chip:hover { background: #d2e3fc; }
+
+    /* Empty state */
+    .empty { text-align: center; padding: 48px; color: #5f6368; }
+
+    @media (max-width: 768px) {
+      .stats-row { grid-template-columns: 1fr 1fr; }
+      .health-metrics { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+
+<div class="header">
+  <svg class="header-logo" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+    <path d="M12 3L3 8.5V15.5L12 21L21 15.5V8.5L12 3Z" fill="#1a73e8" fill-opacity="0.15" stroke="#1a73e8" stroke-width="1.5"/>
+    <path d="M12 7L6 10.5V17.5L12 21" stroke="#1a73e8" stroke-width="1.5" stroke-linecap="round"/>
+    <path d="M12 7L18 10.5V17.5L12 21" stroke="#34a853" stroke-width="1.5" stroke-linecap="round"/>
+  </svg>
+  <h1>Crash &amp; ANR Report</h1>
+  <span class="version-chip">v1.0 → v1.1</span>
+  <span class="report-date">2026-04-26</span>
+</div>
+
+<div class="container">
+
+  <div class="stats-row">
+    <div class="card stat-card">
+      <div class="stat-label">Total Issues</div>
+      <div class="stat-value">0</div>
+    </div>
+    <div class="card stat-card">
+      <div class="stat-label">🆕 Fresh Issues</div>
+      <div class="stat-value" style="color:#1e8e3e">0</div>
+    </div>
+    <div class="card stat-card">
+      <div class="stat-label">P0 Issues</div>
+      <div class="stat-value" style="color:#d93025">0</div>
+    </div>
+    <div class="card stat-card">
+      <div class="stat-label">⚡ Spiking</div>
+      <div class="stat-value" style="color:#a142f4">0</div>
+    </div>
+  </div>
+
+  <div class="card health-card">
+    <h2>Session Health</h2>
+    <p class="health-subtitle">30-day trend</p>
+    <div class="health-metrics">
+      <div class="trend-STABLE">
+        <div class="health-metric-label">Crash-Free Sessions</div>
+        <div class="health-metric-value">
+          100.0%
+          <span class="trend-arrow">→
+          </span>
+        </div>
+        <div class="sparkline-wrap">
+          <canvas class="sparkline" id="crashSparkline"
+            data-values=""
+            data-color="#1a73e8"></canvas>
+        </div>
+      </div>
+      <div class="trend-STABLE">
+        <div class="health-metric-label">ANR-Free Sessions</div>
+        <div class="health-metric-value">
+          100.0%
+          <span class="trend-arrow">→
+          </span>
+        </div>
+        <div class="sparkline-wrap">
+          <canvas class="sparkline" id="anrSparkline"
+            data-values=""
+            data-color="#34a853"></canvas>
+        </div>
+      </div>
+    </div>
+    
+  </div>
+
+  <div class="card table-card">
+    <div class="filter-bar">
+      <label>Type</label>
+      <select id="filterType" onchange="applyFilters()">
+        <option value="">All</option>
+        <option value="CRASH">CRASH</option>
+        <option value="ANR">ANR</option>
+      </select>
+      <label>Priority</label>
+      <select id="filterPriority" onchange="applyFilters()">
+        <option value="">All</option>
+        <option value="P0">P0</option>
+        <option value="P1">P1</option>
+        <option value="P2">P2</option>
+      </select>
+      <label>Status</label>
+      <select id="filterStatus" onchange="applyFilters()">
+        <option value="">All</option>
+        <option value="fresh">Fresh only</option>
+        <option value="spike">Spiking only</option>
+      </select>
+    </div>
+    <table class="issue-table">
+      <thead>
+        <tr>
+          <th>Badges</th>
+          <th>Issue</th>
+          <th>Users</th>
+          <th>First Seen</th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody>
+        
+        <tr><td colspan="5" class="empty">No issues found for v1.1.</td></tr>
+        
+      </tbody>
+    </table>
+  </div>
+
+</div>
+
+<script>
+function toggle(id, row) {
+  const detail = document.getElementById('detail-' + id);
+  const icon = document.getElementById('icon-' + id);
+  const isOpen = detail.classList.contains('open');
+  document.querySelectorAll('.detail-row.open').forEach(d => d.classList.remove('open'));
+  document.querySelectorAll('.expand-icon').forEach(i => i.textContent = '▶');
+  if (!isOpen) {
+    detail.classList.add('open');
+    icon.textContent = '▼';
+  }
+}
+
+function applyFilters() {
+  const type = document.getElementById('filterType').value;
+  const priority = document.getElementById('filterPriority').value;
+  const status = document.getElementById('filterStatus').value;
+  document.querySelectorAll('.issue-row').forEach(row => {
+    const okType = !type || row.dataset.type === type;
+    const okPriority = !priority || row.dataset.priority === priority;
+    const okStatus = !status
+      || (status === 'fresh' && row.dataset.fresh === '1')
+      || (status === 'spike' && row.dataset.spike === '1');
+    row.style.display = (okType && okPriority && okStatus) ? '' : 'none';
+    const detail = document.getElementById('detail-' + row.id.replace('row-', ''));
+    if (detail && row.style.display === 'none') detail.classList.remove('open');
+  });
+}
+
+function drawSparkline(canvas, values, color) {
+  if (!values.length) return;
+  const dpr = window.devicePixelRatio || 1;
+  const w = canvas.offsetWidth;
+  const h = canvas.offsetHeight;
+  canvas.width = w * dpr;
+  canvas.height = h * dpr;
+  const ctx = canvas.getContext('2d');
+  ctx.scale(dpr, dpr);
+  const min = Math.min(...values);
+  const max = Math.max(...values);
+  const range = max - min || 0.001;
+  ctx.beginPath();
+  ctx.strokeStyle = color;
+  ctx.lineWidth = 2;
+  ctx.lineJoin = 'round';
+  values.forEach((v, i) => {
+    const x = (i / Math.max(values.length - 1, 1)) * w;
+    const y = h - ((v - min) / range) * (h - 4) - 2;
+    i === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
+  });
+  ctx.stroke();
+}
+
+document.querySelectorAll('.sparkline').forEach(canvas => {
+  const vals = canvas.dataset.values.split(',').map(Number).filter(n => !isNaN(n));
+  drawSparkline(canvas, vals, canvas.dataset.color || '#1a73e8');
+});
+</script>
+</body>
+</html>
